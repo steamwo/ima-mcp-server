@@ -43,8 +43,8 @@ func (u *COSUploader) Upload(ctx context.Context, filePath, contentType string, 
 
 	host := fmt.Sprintf("%s.cos.%s.myqcloud.com", credential.BucketName, credential.Region)
 	path := "/" + strings.TrimPrefix(credential.COSKey, "/")
-	start := credential.StartTime
-	expires := credential.ExpiredTime
+	start := int64(credential.StartTime)
+	expires := int64(credential.ExpiredTime)
 	now := time.Now().Unix()
 	if start == 0 {
 		start = now
