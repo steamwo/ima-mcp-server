@@ -70,7 +70,7 @@ func registerNoteTools(server *mcp.Server, service *ima.Service) {
 		out, err := service.Client.GetNoteContent(ctx, in.NoteID, in.Format)
 		return nil, out, err
 	})
-	mcp.AddTool(server, &mcp.Tool{Name: "ima_create_note", Description: "Create a new IMA note from UTF-8 Markdown. Use only when the user intends to create a new note, not when they intend to append to an existing note."}, func(ctx context.Context, _ *mcp.CallToolRequest, in CreateNoteInput) (*mcp.CallToolReqult, ima.NoteWriteData, error) {
+	mcp.AddTool(server, &mcp.Tool{Name: "ima_create_note", Description: "Create a new IMA note from UTF-8 Markdown. Use only when the user intends to create a new note, not when they intend to append to an existing note."}, func(ctx context.Context, _ *mcp.CallToolRequest, in CreateNoteInput) (*mcp.CallToolResult, ima.NoteWriteData, error) {
 		out, err := service.Client.CreateNote(ctx, in.Content, in.FolderID, in.FolderName)
 		return nil, out, err
 	})
