@@ -20,22 +20,16 @@ jobs:
         include:
           - goos: linux
             goarch: amd64
-            archive: tar.gz
           - goos: linux
             goarch: arm64
-            archive: tar.gz
           - goos: darwin
             goarch: amd64
-            archive: tar.gz
           - goos: darwin
             goarch: arm64
-            archive: tar.gz
           - goos: windows
             goarch: amd64
-            archive: zip
           - goos: windows
             goarch: arm64
-            archive: zip
 
     steps:
       - uses: actions/checkout@v4
@@ -48,46 +42,28 @@ jobs:
       - name: Test
         run: go test ./...
 
-      - name: Build
+      - name: Build binary
+        id: build
         env:
           CGO_ENABLED: '0'
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
           set -euo pipefail
-          mkdir -p dist/package
+          mkdir -p dist
           VERSION="${GITHUB_SHA::12}"
-          BIN="ima-mcp-server"
+          BIN="ima-mcp-server-${GOOS}-${GOARCH}"
           if [ "${GOOS}" = "windows" ]; then
             BIN="${BIN}.exe"
           fi
-          go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "dist/package/${BIN}" ./cmd/ima-mcp-server
-          cp README.md LICENSE SECURITY.md dist/package/
+          go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "dist/${BIN}" ./cmd/ima-mcp-server
+          echo "binary=${BIN}" >> "${GITHUB_OUTPUT}"
 
-      - name: Package tar.gz
-        if: matrix.archive == 'tar.gz'
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: |
-          set -euo pipefail
-          tar -C dist/package -czf "dist/ima-mcp-server-${GOOS}-${GOARCH}.tar.gz" .
-
-      - name: Package zip
-        if: matrix.archive == 'zip'
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-        run: |
-          set -euo pipefail
-          cd dist/package
-          zip -qr "../ima-mcp-server-${GOOS}-${GOARCH}.zip" .
-
-      - name: Upload binary package
+      - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
           name: ima-mcp-server-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/ima-mcp-server-${{ matrix.goos }}-${{ matrix.goarch }}.${{ matrix.archive }}
+          path: dist/${{ steps.build.outputs.binary }}
           if-no-files-found: error
           retention-days: 30
 
@@ -96,7 +72,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download packages
+      - name: Download binaries
         uses: actions/download-artifact@v4
         with:
           pattern: ima-mcp-server-*
