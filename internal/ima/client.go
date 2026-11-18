@@ -36,7 +36,7 @@ func (e *APIError) Error() string {
 }
 
 type apiEnvelope struct {
-	Code int             `json:"code"`
+	Code Int             `json:"code"`
 	Msg  string          `json:"msg"`
 	Data json.RawMessage `json:"data"`
 }
@@ -104,7 +104,7 @@ func (c *Client) Call(ctx context.Context, apiPath string, body any, out any) er
 		return fmt.Errorf("IMA returned invalid JSON: %w", err)
 	}
 	if envelope.Code != 0 {
-		return &APIError{Code: envelope.Code, Msg: envelope.Msg}
+		return &APIError{Code: int(envelope.Code), Msg: envelope.Msg}
 	}
 	if out == nil || len(envelope.Data) == 0 || string(envelope.Data) == "null" {
 		return nil
