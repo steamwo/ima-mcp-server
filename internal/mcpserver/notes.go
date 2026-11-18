@@ -8,8 +8,8 @@ import (
 )
 
 type SearchNotesInput struct {
-	SearchType int    `json:"search_type,omitempty" jsonschema:"0=title search (default), 1=content search"`
-	SortType   int    `json:"sort_type,omitempty" jsonschema:"0=modify time (default), 1=create time, 2=title, 3=size"`
+	SearchType int    `json:"search_type,omitempty" jsonschema:"Search mode: 0=title search (default), 1=content search"`
+	SortType   int    `json:"sort_type,omitempty" jsonschema:"Sort mode: 0=modify time (default), 1=create time, 2=title, 3=size"`
 	Title      string `json:"title,omitempty" jsonschema:"Title search keyword"`
 	Content    string `json:"content,omitempty" jsonschema:"Content search keyword"`
 	Start      int64  `json:"start,omitempty" jsonschema:"Offset start, default 0"`
@@ -18,14 +18,14 @@ type SearchNotesInput struct {
 
 type ListNotesInput struct {
 	FolderID string `json:"folder_id,omitempty" jsonschema:"Notebook/folder ID; omit to list all notes"`
-	SortType int    `json:"sort_type,omitempty" jsonschema:"0=modify time (default), 1=create time, 2=title"`
+	SortType int    `json:"sort_type,omitempty" jsonschema:"Sort mode: 0=modify time (default), 1=create time, 2=title"`
 	Cursor   string `json:"cursor,omitempty" jsonschema:"Cursor; first page is empty string"`
 	Limit    int    `json:"limit,omitempty" jsonschema:"Page size 1-20; default 20"`
 }
 
 type GetNoteInput struct {
 	NoteID string `json:"note_id" jsonschema:"Internal IMA note ID"`
-	Format int    `json:"format,omitempty" jsonschema:"0=plain text (recommended/default), 2=JSON; Markdown read format is not supported by IMA"`
+	Format int    `json:"format,omitempty" jsonschema:"Output format: 0=plain text (recommended/default), 2=JSON; Markdown read format is not supported by IMA"`
 }
 
 type CreateNoteInput struct {
