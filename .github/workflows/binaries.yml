@@ -59,6 +59,56 @@ jobs:
           go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "dist/${BIN}" ./cmd/ima-mcp-server
           echo "binary=${BIN}" >> "${GITHUB_OUTPUT}"
 
+      - name: Smoke-test packaged binary
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        env:
+          IMA_OPENAPI_CLIENTID: smoke-client
+          IMA_OPENAPI_APIKEY: smoke-key
+        run: |
+          set -euo pipefail
+          BIN="dist/${{ steps.build.outputs.binary }}"
+          LOG="$(mktemp)"
+          LIST="$(mktemp)"
+          CALL="$(mktemp)"
+          printf 'ima mcp smoke test\n' > /tmp/ima-mcp-smoke.txt
+
+          "${BIN}" -transport http -listen 127.0.0.1:18080 >"${LOG}" 2>&1 &
+          pid=$!
+          cleanup() {
+            kill "${pid}" 2>/dev/null || true
+            wait "${pid}" 2>/dev/null || true
+            rm -f "${LOG}" "${LIST}" "${CALL}" /tmp/ima-mcp-smoke.txt
+          }
+          trap cleanup EXIT
+
+          sleep 1
+          kill -0 "${pid}"
+          test "$(curl -fsS http://127.0.0.1:18080/healthz)" = "ok"
+
+          curl -fsS \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -H 'Mcp-Protocol-Version: 2026-07-28' \
+            -H 'Mcp-Method: tools/list' \
+            --data '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"ci-smoke","version":"1"},"io.modelcontextprotocol/clientCapabilities":{}}}}' \
+            http://127.0.0.1:18080/mcp > "${LIST}"
+
+          grep -q '"name":"ima_search_notes"' "${LIST}"
+          grep -q '"name":"ima_upload_file"' "${LIST}"
+          test "$(grep -o '"name":"ima_' "${LIST}" | wc -l | tr -d ' ')" = "19"
+
+          curl -fsS \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -H 'Mcp-Protocol-Version: 2026-07-28' \
+            -H 'Mcp-Method: tools/call' \
+            -H 'Mcp-Name: ima_preflight_file' \
+            --data '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"ima_preflight_file","arguments":{"path":"/tmp/ima-mcp-smoke.txt"},"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"ci-smoke","version":"1"},"io.modelcontextprotocol/clientCapabilities":{}}}}' \
+            http://127.0.0.1:18080/mcp > "${CALL}"
+
+          grep -q '"media_type":13' "${CALL}"
+          grep -q '"content_type":"text/plain"' "${CALL}"
+
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
