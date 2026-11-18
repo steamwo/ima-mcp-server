@@ -65,8 +65,7 @@ func runHTTP(ctx context.Context, server *mcp.Server, listen string) error {
 	mux.Handle("/mcp", mcpHandler)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		_, _ = w.Write([]byte("ok
-"))
+		_, _ = w.Write([]byte("ok\\n"))
 	})
 
 	httpServer := &http.Server{
