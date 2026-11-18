@@ -1,0 +1,119 @@
+name: Build Binaries
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            archive: tar.gz
+          - goos: linux
+            goarch: arm64
+            archive: tar.gz
+          - goos: darwin
+            goarch: amd64
+            archive: tar.gz
+          - goos: darwin
+            goarch: arm64
+            archive: tar.gz
+          - goos: windows
+            goarch: amd64
+            archive: zip
+          - goos: windows
+            goarch: arm64
+            archive: zip
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: false
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        env:
+          CGO_ENABLED: '0'
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/package
+          VERSION="${GITHUB_SHA::12}"
+          BIN="ima-mcp-server"
+          if [ "${GOOS}" = "windows" ]; then
+            BIN="${BIN}.exe"
+          fi
+          go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "dist/package/${BIN}" ./cmd/ima-mcp-server
+          cp README.md LICENSE SECURITY.md dist/package/
+
+      - name: Package tar.gz
+        if: matrix.archive == 'tar.gz'
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          tar -C dist/package -czf "dist/ima-mcp-server-${GOOS}-${GOARCH}.tar.gz" .
+
+      - name: Package zip
+        if: matrix.archive == 'zip'
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          cd dist/package
+          zip -qr "../ima-mcp-server-${GOOS}-${GOARCH}.zip" .
+
+      - name: Upload binary package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ima-mcp-server-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/ima-mcp-server-${{ matrix.goos }}-${{ matrix.goarch }}.${{ matrix.archive }}
+          if-no-files-found: error
+          retention-days: 30
+
+  checksums:
+    name: Checksums
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ima-mcp-server-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum ima-mcp-server-* > checksums.txt
+          cat checksums.txt
+
+      - name: Upload checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: dist/checksums.txt
+          if-no-files-found: error
+          retention-days: 30
